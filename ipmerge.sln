@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "IPMerge", "IPMerge\IPMerge.fsproj", "{7EB8DB00-F8A2-4039-B290-C33F158A6B4F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "IPMerge.Tests", "IPMerge.Tests\IPMerge.Tests.fsproj", "{F830C8AD-2370-4FD2-AB2F-D88EAD03FE42}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EB8DB00-F8A2-4039-B290-C33F158A6B4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7EB8DB00-F8A2-4039-B290-C33F158A6B4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7EB8DB00-F8A2-4039-B290-C33F158A6B4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7EB8DB00-F8A2-4039-B290-C33F158A6B4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F830C8AD-2370-4FD2-AB2F-D88EAD03FE42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F830C8AD-2370-4FD2-AB2F-D88EAD03FE42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F830C8AD-2370-4FD2-AB2F-D88EAD03FE42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F830C8AD-2370-4FD2-AB2F-D88EAD03FE42}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
