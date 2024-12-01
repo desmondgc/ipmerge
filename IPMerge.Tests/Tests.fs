@@ -1,7 +1,5 @@
 module Tests
 
-open System
-open System.Linq
 open System.Net
 open Program
 open Xunit
@@ -87,23 +85,6 @@ let ``Mostly complete /28 subnet`` () =
 let ``supernet`` () =
     let expected = IPNetwork.Parse("255.255.255.252/30")
     let actual = supernet (IPNetwork.Parse("255.255.255.254/31"))
-    Assert.Equal(expected, actual)
-    
-[<Theory>]
-[<InlineData("10.0.1.0/24", "10.0.0.0/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.0.64/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.0.128/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.0.192/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.1.0/26", true)>]
-[<InlineData("10.0.1.0/24", "10.0.1.64/26", true)>]
-[<InlineData("10.0.1.0/24", "10.0.1.128/26", true)>]
-[<InlineData("10.0.1.0/24", "10.0.1.192/26", true)>]
-[<InlineData("10.0.1.0/24", "10.0.2.0/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.2.64/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.2.128/26", false)>]
-[<InlineData("10.0.1.0/24", "10.0.2.192/26", false)>]
-let ``isSuper`` (sup: string) (sub: string) expected =
-    let actual = isSuper (IPNetwork.Parse(sup)) (IPNetwork.Parse(sub))
     Assert.Equal(expected, actual)
     
 [<Fact>]
