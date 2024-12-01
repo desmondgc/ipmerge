@@ -1,22 +1,21 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 
 open System
-open System.Collections.Generic
 open System.IO
 open System.Linq
 open System.Net
 
 printfn "Hello from F#"
 
-type IPAddressOrCIDR =
+type IPAddressOrCidr =
     | IP of IPAddress
-    | CIDR of IPNetwork
+    | Cidr of IPNetwork
 
-let parseIPAddress (line: string) =
-    if line.Contains("/") then
-        CIDR (IPNetwork.Parse(line))
+let parseIPAddress (str: string) =
+    if str[^3] = '/' || str[^2] = '/' then
+        Cidr (IPNetwork.Parse(str))
     else
-        IP (IPAddress.Parse(line))
+        IP (IPAddress.Parse(str))
         
 let readIPAddresses (path: string) =
     seq {
@@ -25,70 +24,97 @@ let readIPAddresses (path: string) =
             yield parseIPAddress (reader.ReadLine())
     }
     
-let routableAddresses (prefixLength: int) =
+let subnetSize (prefixLength: int) =
     if prefixLength < 0 || prefixLength > 31 then
         invalidArg (nameof prefixLength) $"Value passed in was %d{prefixLength}."
     else
-        (1 <<< (32 - prefixLength)) - 2
+        1 <<< (32 - prefixLength)
 
-let ipToInt (ip: IPAddress) : uint32 =
+let ipToInt (ip: IPAddress) =
     BitConverter.ToUInt32(Array.rev (ip.GetAddressBytes()), 0)
     
-let intToIP (ip: uint32) : IPAddress =
+let intToIP (ip: uint32) =
     IPAddress(Array.rev (BitConverter.GetBytes(ip)))
     
 let getMask prefixLength =
     0xFFFFFFFFu <<< (32 - prefixLength)
     
 let getNetAddress ip prefixLength =
-    ipToInt ip &&& (getMask prefixLength)
-    |> intToIP
+    let masked = ipToInt ip &&& getMask prefixLength
+    IPNetwork(intToIP masked, prefixLength)
 
-let findMostlyCompleteSubnets prefixLength (ipsOrCidrs: IPAddressOrCIDR seq) =    
-    let justIPs =
-        ipsOrCidrs
-        |> Seq.choose (function
-            | IP ip -> Some ip
-            | _ -> None)
-        
-    let completenessThreshold = (routableAddresses prefixLength) - (30 - prefixLength)
+let justIPs = function
+    | IP ip -> Some ip
+    | _ -> None
+
+let findMostlyCompleteSubnets prefixLength (ipsOrCidrs: IPAddressOrCidr seq) =    
+    let completenessThreshold =
+        (subnetSize prefixLength) + prefixLength - 32
     
     query {
-        for ip in justIPs do
-        groupBy (IPNetwork((getNetAddress ip prefixLength), prefixLength)) into g
+        for ip in (Seq.choose justIPs ipsOrCidrs) do
+        groupBy (getNetAddress ip prefixLength) into g
         where (g.Count() >= completenessThreshold)
         select g.Key
     }
     
 let supernet (net: IPNetwork) =
-    let prefix = net.PrefixLength - 1
-    IPNetwork(getNetAddress net.BaseAddress prefix, prefix)
+    getNetAddress net.BaseAddress (net.PrefixLength - 1)
+    
+let isSuper (net1: IPNetwork) (net2: IPNetwork) =
+    net1.PrefixLength < net2.PrefixLength
+    && (getNetAddress net2.BaseAddress net1.PrefixLength) = net1
     
 let canCombine (net1: IPNetwork) (net2: IPNetwork) =
     net1.PrefixLength = net2.PrefixLength
     && supernet net1 = supernet net2
     
-let collapse (nets: IPNetwork list) =
-    let sortedNetworks = List.sortBy (fun (net: IPNetwork) -> (ipToInt net.BaseAddress, net.PrefixLength)) nets
+let collapse (nets: IPNetwork seq) = 
+    let rec foldNet acc net =
+        match acc with
+        | [] -> [ net ]
+        | x :: xs ->
+            if canCombine net x then
+                // Combine the current and previous network and continue backtracking
+                foldNet xs (supernet net)
+            else if isSuper x net then
+                // Skip the current network if it is encompassed by the previous one
+                x :: xs
+            else
+                net :: x :: xs
+
+    nets
+    |> Seq.sortBy (fun net -> (ipToInt net.BaseAddress, net.PrefixLength))
+    |> Seq.fold foldNet []
+    |> Seq.rev
     
-    let result = List<IPNetwork>()
-    let mutable i = 0
+let goForIt path prefixLength =
+    let ips = Seq.cache (readIPAddresses path)
     
-    while i < sortedNetworks.Length do
-        let mutable current = sortedNetworks[i]
-        let mutable j = i + 1
-
-        while j < sortedNetworks.Length && canCombine current sortedNetworks[j] do
-            current <- supernet current
-            j <- j + 1
-
-        // Backtrack to merge with previous networks if possible
-        while result.Count > 0 && canCombine result[result.Count - 1] current do
-            current <- supernet result[result.Count - 1]
-            result.RemoveAt(result.Count - 1)
-
-        result.Add(current)
-        i <- j
-
-    List.ofSeq result
+    let nets =
+        ips
+        |> findMostlyCompleteSubnets prefixLength
+        |> collapse
+        |> Seq.toList
     
+    seq {
+        for ip in ips |> Seq.choose justIPs do
+            match nets |> List.tryFind (_.Contains(ip)) with
+            | Some net -> yield Cidr net
+            | None -> yield IP ip
+    }
+    |> Seq.distinct
+    |> Seq.iter (printfn "%A")
+    
+[<EntryPoint>]
+let main argv =
+    match argv with
+    | [| path |] ->
+        goForIt path 29
+        0
+    | [| path; prefixLength |] ->
+        goForIt path (Int32.Parse(prefixLength))
+        0
+    | _ ->
+        printfn "Usage: ipmerge <path> [length]"
+        1

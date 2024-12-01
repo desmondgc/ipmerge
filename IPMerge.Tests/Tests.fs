@@ -16,9 +16,11 @@ let ``Mostly complete subnet`` () =
         "10.0.0.5"
         //"10.0.0.6"
     ]
-    let actual = Seq.map parseIPAddress ips
-                 |> findMostlyCompleteSubnets 29
-    Assert.Equal(IPNetwork.Parse("10.0.0.0/29"), actual.Single())
+    let expected = [
+        IPNetwork.Parse("10.0.0.0/29")
+    ]
+    let actual = findMostlyCompleteSubnets 29 <| Seq.map parseIPAddress ips
+    Assert.Equal(expected, actual)
     
 [<Fact>]
 let ``Incomplete subnet`` () =
@@ -30,8 +32,7 @@ let ``Incomplete subnet`` () =
         "10.0.0.5"
         //"10.0.0.6"
     ]
-    let actual = Seq.map parseIPAddress ips
-                 |> findMostlyCompleteSubnets 29
+    let actual = findMostlyCompleteSubnets 29 <| Seq.map parseIPAddress ips
     Assert.Empty(actual)
     
 [<Fact>]
@@ -55,8 +56,7 @@ let ``Two mostly complete subnets`` () =
         IPNetwork.Parse("10.0.0.0/29")
         IPNetwork.Parse("192.168.1.64/29")
     ]
-    let actual = Seq.map parseIPAddress ips
-                 |> findMostlyCompleteSubnets 29
+    let actual = findMostlyCompleteSubnets 29 <| Seq.map parseIPAddress ips
     Assert.Equal(expected, actual)
     
 [<Fact>]
@@ -77,9 +77,34 @@ let ``Mostly complete /28 subnet`` () =
         "10.0.0.13"
         "10.0.0.14"
     ]
-    let actual = Seq.map parseIPAddress ips
-                 |> findMostlyCompleteSubnets 28
-    Assert.Equal(IPNetwork.Parse("10.0.0.0/28"), actual.Single())
+    let expected = [
+        IPNetwork.Parse("10.0.0.0/28")
+    ]
+    let actual = findMostlyCompleteSubnets 28 <| Seq.map parseIPAddress ips
+    Assert.Equal(expected, actual)
+    
+[<Fact>]
+let ``supernet`` () =
+    let expected = IPNetwork.Parse("255.255.255.252/30")
+    let actual = supernet (IPNetwork.Parse("255.255.255.254/31"))
+    Assert.Equal(expected, actual)
+    
+[<Theory>]
+[<InlineData("10.0.1.0/24", "10.0.0.0/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.0.64/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.0.128/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.0.192/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.1.0/26", true)>]
+[<InlineData("10.0.1.0/24", "10.0.1.64/26", true)>]
+[<InlineData("10.0.1.0/24", "10.0.1.128/26", true)>]
+[<InlineData("10.0.1.0/24", "10.0.1.192/26", true)>]
+[<InlineData("10.0.1.0/24", "10.0.2.0/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.2.64/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.2.128/26", false)>]
+[<InlineData("10.0.1.0/24", "10.0.2.192/26", false)>]
+let ``isSuper`` (sup: string) (sub: string) expected =
+    let actual = isSuper (IPNetwork.Parse(sup)) (IPNetwork.Parse(sub))
+    Assert.Equal(expected, actual)
     
 [<Fact>]
 let ``Combine subnets simple`` () =
@@ -89,27 +114,51 @@ let ``Combine subnets simple`` () =
         IPNetwork.Parse("10.0.0.192/27")
         IPNetwork.Parse("10.0.0.224/27")
     ]
+    let expected = [
+        IPNetwork.Parse("10.0.0.0/24")
+    ]
     let actual = collapse nets
-    Assert.Equal<IPNetwork list>([ IPNetwork.Parse("10.0.0.0/24") ], actual)
+    Assert.Equal(expected, actual)
     
 [<Fact>]
 let ``Combine subnets complex`` () =
     let nets = [
-        IPNetwork.Parse("10.0.0.0/25")
-        IPNetwork.Parse("10.0.0.128/26")
-        IPNetwork.Parse("10.0.0.192/27")
-        IPNetwork.Parse("10.0.0.224/27")
-        IPNetwork.Parse("10.0.1.0/26")
-        IPNetwork.Parse("10.0.2.0/24")
+        IPNetwork.Parse("10.0.0.0/24")
+        IPNetwork.Parse("10.0.1.0/24")
+        IPNetwork.Parse("10.0.2.0/23")
+        IPNetwork.Parse("10.0.4.0/26")
+        IPNetwork.Parse("10.0.4.64/26")
+        IPNetwork.Parse("10.0.5.0/24")
+        IPNetwork.Parse("10.0.6.0/24")
+        IPNetwork.Parse("10.0.7.0/26")
+        IPNetwork.Parse("10.0.7.64/26")
+        IPNetwork.Parse("10.0.7.128/25")
+        IPNetwork.Parse("10.0.8.128/26")
+        IPNetwork.Parse("10.0.8.192/26")
+    ]
+    let expected = [
+        IPNetwork.Parse("10.0.0.0/22")
+        IPNetwork.Parse("10.0.4.0/25")
+        IPNetwork.Parse("10.0.5.0/24")
+        IPNetwork.Parse("10.0.6.0/23")
+        IPNetwork.Parse("10.0.8.128/25")
     ]
     let actual = collapse nets
-    Assert.Equal<IPNetwork list>([
-        IPNetwork.Parse("10.0.0.0/24")
-        IPNetwork.Parse("10.0.1.0/26")
-        IPNetwork.Parse("10.0.2.0/24")
-    ], actual)
-    
+    Assert.Equal(expected, actual)
+
 [<Fact>]
-let ``supernet`` () =
-    let actual = supernet (IPNetwork.Parse("255.255.255.254/31"))
-    Assert.Equal(IPNetwork.Parse("255.255.255.252/30"), actual)
+let ``Combine subnets with overlap`` () =
+    let nets = [
+        IPNetwork.Parse("10.0.0.0/23")
+        IPNetwork.Parse("10.0.1.0/24")
+        IPNetwork.Parse("10.0.2.0/24")
+        IPNetwork.Parse("10.0.4.0/26")
+    ]
+    let expected = [
+        IPNetwork.Parse("10.0.0.0/23")
+        IPNetwork.Parse("10.0.2.0/24")
+        IPNetwork.Parse("10.0.4.0/26")
+    ]
+    let actual = collapse nets
+    Assert.Equal(expected , actual)
+    
