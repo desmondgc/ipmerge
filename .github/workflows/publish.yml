@@ -14,7 +14,7 @@ jobs:
         with:
           dotnet-version: 8.x
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore -r win-x64
       - name: Publish artifacts
         run: |
           dotnet publish IPMerge/IPMerge.fsproj -o ./output -r win-x64 -p:PublishSingleFile=true --no-restore
