@@ -1,0 +1,24 @@
+name: Publish to GitHub
+
+on:
+  push:
+    tags:
+      - 'v20*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Publish artifacts
+        run: |
+          dotnet publish IPMerge/IPMerge.fsproj -o ./output -r win-x64 -p:PublishSingleFile=true --no-restore
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./output/IPMerge.exe
