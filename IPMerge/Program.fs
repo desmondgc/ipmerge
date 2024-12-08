@@ -1,11 +1,7 @@
-﻿// For more information see https://aka.ms/fsharp-console-apps
-
-open System
+﻿open System
 open System.IO
 open System.Linq
 open System.Net
-
-printfn "Hello from F#"
 
 type IPOrCidr =
     | IP of IPAddress

@@ -1,8 +1,8 @@
 module Tests
 
 open System.Net
-open Program
 open Xunit
+open Program
 
 [<Fact>]
 let ``Mostly complete subnet`` () =
@@ -135,4 +135,6 @@ let ``Combine overlapping subnets`` () =
     ]
     let actual = collapse nets
     Assert.Equal(expected , actual)
-    
+
+[<EntryPoint>]
+let main _ = 0
